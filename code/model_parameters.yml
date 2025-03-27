@@ -1,0 +1,52 @@
+parameter_set_name: "baseline"
+
+landscape :
+
+  grid_size : 10 # The area of transmission, grid size by grid size in meters e.g., 10m x 10m
+  buffer : 5000 # The buffer around the landscape,  meters
+  deer_density : 11.8 # Per km2
+  bounds : [287836.08326910855, 3881858.365148446, 304570.3774635468, 3892943.5468596877] # (xlower, ylower, xupper, yupper) 
+  forest_shapefile : "ames_forest_cover_high_cover_only_clip.shp"
+  wrap_landscape : False
+
+demography :
+
+  sex_ratio : 0.50 # Male to female sex ratio
+  age_structure : [0.147, 0.147, 0.118, 0.118, 0.352, 0.118] # Fawn Female, Fawn Male, yearling Female, yearling Male Adult, based on Stable stage structure of matrix
+  duration_of_seasons_model2 : [70, 205, 90] # Gestation, dispersal, dispersal
+  duration_of_seasons_model3 : [70, 60, 60, 85, 90] # Gestation, Male dispersal, Fawning behavior, Fawn recruitment, rut and dispersal
+  year_length : 365
+  repro_percent_adults_yearlings : 0.89 # Probability that female deer are pregant. From field data
+  expected_neonates : 2 # Expected number of neonates per female
+  neonate_survival : 0.475 # Probability that neonates survive to recruitment (2-month survival)
+  strength_of_mating_interaction : 1.5 # Ratio of correlation to spatial overlap during rut
+  percent_male_dispersal_spring : 0.8 # Percent of yearling males that disperse that haven't already dispersed
+  percent_male_dispersal_fall : 1 # Percent of yearling males that disperse in the fall that haven't already (most dispersal occurs in the spring)
+  mean_dispersal : 6 # Mean dispersal distance in km from Lon et al. 2008
+  scale_dispersal: 5 # k parameter of the negative binomial from Long et al. 2005
+  only_males: True # Do only males disperse?
+  buffer: 1000 # Buffer around dispersing male to look for other males to group with
+  fawn_male_survival : 0.8 # Survival probabilities
+  fawn_female_survival : 0.8
+  yearling_male_survival : 0.5
+  yearling_female_survival : 0.75
+  adult_male_survival : 0.5
+  adult_female_survival : 0.75
+  ratio_within_group : [1, 2.3] # From Vargas et al. 2024, log ratio of social / spatial FOI 
+  ratio_between_group : [-2, 1] # From Vargas et al. 2024, log ratio of social / spatial FOI
+
+epi :
+
+  sigma : 1.0 # Duration in the exposed class
+  gamma : 0.1666667 # 1 / 6.0 days in the exposed class, from Palmer
+  external_infection_rate : 0
+
+sim :
+
+  desired_R0_vals : [2.5, 4.0, 7.0, 13.0, 30.0, 45.0, 60.0] #[0.25, 0.5, 1, 2.0, 5.0, 7.5, 10.0] # Parameters that model will loop over
+  months_waning_antibody : [4, 8.5, 13] # Months waning antibodies
+  num_sims : 25
+  cores : 8
+  num_landscapes : 20
+  less_memory : False
+

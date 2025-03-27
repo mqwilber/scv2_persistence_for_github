@@ -1,0 +1,10 @@
+parameter_set_name: "high_density"
+
+landscape :
+
+  deer_density : 20.0 # Per km2
+
+sim :
+
+  num_landscapes : 10
+  less_memory : True # Only model 3

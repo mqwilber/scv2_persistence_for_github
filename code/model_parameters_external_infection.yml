@@ -1,0 +1,16 @@
+parameter_set_name: "external_infection"
+
+parameter_set_name_for_landscape: "baseline" # Loads a different landscape then "external_infection"
+
+epi :
+
+  external_infection_rate : 5.534988e-05
+
+sim :
+
+  desired_R0_vals : [2.5, 4.0, 7.0, 13.0] #, 30.0, 45.0, 60.0] # Parameters that model will loop over
+  months_waning_antibody : [4, 8.5, 13] # Months waning antibodies
+  num_sims : 25
+  cores : 1
+  num_landscapes : 10
+

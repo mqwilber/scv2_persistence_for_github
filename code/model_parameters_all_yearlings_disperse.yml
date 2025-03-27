@@ -1,0 +1,10 @@
+parameter_set_name: "all_dispersal"
+
+demography :
+
+  only_males: False # Do only yearling males disperse
+
+sim :
+
+  num_landscapes : 10
+  less_memory : True # Only applies to model 3
