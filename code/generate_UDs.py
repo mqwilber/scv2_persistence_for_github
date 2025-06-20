@@ -28,7 +28,11 @@ def load_and_clean_data(filename, time_step_in_minutes=30):
 	"""
 
 	dat = pd.read_csv(filename)
-	dat = dat.query("fast_step_ == False and fast_roundtrip_ == False")
+	# Preliminary cleaning
+	# dat = (dat.query("fast_step_ == False and fast_roundtrip_ == False")
+	# 		  .assign(animal_id = lambda x: x.animal_id.astype(np.str_)))
+	dat = (dat.assign(animal_id = lambda x: x.animal_id.astype(np.str_).str.replace("_", "-")))
+	dat = dat[~(dat.x_.isna() | dat.y_.isna())]
 
 	# Trim the movement 
 	host_ids = dat.animal_id.unique()
@@ -37,7 +41,7 @@ def load_and_clean_data(filename, time_step_in_minutes=30):
 	for hid in host_ids:
 	    
 	    # Remove approximately the first 15 days and the last 2 days
-	    tdat = (dat.query("animal_id == {0}".format(hid))
+	    tdat = (dat.query("animal_id == '{0}'".format(hid))
 	                    .sort_values(by="t_").iloc[48*15:-48*2, :]
 	                    .assign(datetime = lambda x: pd.to_datetime(x.t_))
 	                    .assign(unix_time = lambda x: x.datetime.astype(np.int64) / (60 * 10**9)) # Convert nanoseconds to mintues
@@ -88,7 +92,7 @@ def process_ud_mp(j, host_season_year, deer_trajs, thin, step, logger, total):
 
 	host, season, year = host_season_year.split("_")
 
-	host_locs = deer_trajs.query("individual_ID == {0} and season == '{1}' and year == {2}".format(host, season, np.int64(year)))[["x", "y"]].values.T
+	host_locs = deer_trajs.query("individual_ID == '{0}'' and season == '{1}' and year == {2}".format(host, season, np.int64(year)))[["x", "y"]].values.T
 	bounds = (np.min(host_locs[0, :]), np.max(host_locs[0, :]), 
 			  np.min(host_locs[1, :]), np.max(host_locs[1, :]))
 
