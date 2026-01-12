@@ -2322,6 +2322,102 @@ def get_spread_metrics(all_res, model_summary):
     return(max_dist, prop_groups_inf, percent_infected_in_groups)
 
 
+@njit
+def emergent_R0_simulation(start_index, gamma, 
+                           foi,
+                           group_indices=None, 
+                           num_sim=100):
+    """
+    Calculate emergent R0 for a single individual
+    
+    Params
+    ------
+    start_index : int
+        Index of individual that starts as infected
+    gamma : float
+        1 / Duration of time in infected class
+    foi : array-like
+        The FOI matrix is a n x n WAIFW array, where n is the number of individuals
+    deltat : float
+        Time step (in days) of the model
+    num_sim : int
+        Number of simulations to run for the start_index individual
+    
+    Returns
+    -------
+    : (totalR0, within group R0, between group R0)
+        Each quantity in the tuple is of length num_sim
+    """
+    
+    # Who can you infect?
+    possible_cases = np.where(foi[:, start_index] > 0)[0]
+
+    # Infection probabilities are fixed
+    if group_indices is not None:
+        group_id = group_indices[possible_cases]
+        base_group = group_indices[start_index]
+        ingroup_ind = group_id == base_group
+
+    inf_rates = foi[start_index, possible_cases]
+
+    num_inf = np.empty(num_sim)
+    within_group = np.empty(num_sim)
+    between_group = np.empty(num_sim)
+
+    for t in range(num_sim):
+
+        # Get the time infected.  Random draw from exponential
+        time_infected = (-1 / gamma)*np.log(1 - np.random.rand())
+
+        # Get the infection probabilities for each individual
+        inf_probs = 1 - np.exp(-inf_rates*time_infected)
+
+        # Draw whether individuals get infected
+        inf_state = np.random.rand(len(possible_cases)) < inf_probs
+
+        if group_indices is not None:
+            within_group[t] = np.sum(inf_state[ingroup_ind])
+            between_group[t] = np.sum(inf_state[~ingroup_ind])
+            
+        num_inf[t] = np.sum(inf_state)
+
+    return((num_inf, within_group, between_group))
+
+
+
+def emergent_R0_for_all_individuals(gamma, foi_mat, group_indices, num_sims=100):
+    """
+    Calculate the emergent R0 for all individuals on the landscape
+
+    Parameters
+    ----------
+    gamma : float
+        1 / gamma is the average duration in the infection class (units are days)
+    foi_mat : array
+        An n x n array that described the force of infection of who infects whom
+    group_indices : array
+        An array specify the group id of all n individuals in foi_mat
+    num_sims : int
+        The number of simulations run for each individual
+
+    Returns
+    -------
+    : (total R0, within group R0, between group R0)
+        total R0 = within group R0 + between group R0
+    """
+
+    allR0 = []
+    allwithin = []
+    allbetween = []
+    for i in range(foi_mat.shape[0]):
+        fullR0, withinR0, betweenR0 = emergent_R0_simulation(i, gamma, foi_mat, group_indices=group_indices, num_sim=num_sims)
+        allR0.append(fullR0)
+        allwithin.append(withinR0)
+        allbetween.append(betweenR0)
+
+    return((np.r_[allR0].mean(), np.r_[allwithin].mean(), np.r_[allbetween].mean()))
+
+
 
 def hdi(k, Z, percent):
     """

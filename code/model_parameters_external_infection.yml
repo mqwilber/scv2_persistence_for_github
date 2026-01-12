@@ -8,9 +8,9 @@ epi :
 
 sim :
 
-  desired_R0_vals : [2.5, 4.0, 7.0, 13.0] #, 30.0, 45.0, 60.0] # Parameters that model will loop over
+  desired_beta_vals : [1.0, 5.0, 10.0, 30.0] #, 30.0, 45.0, 60.0] # Parameters that model will loop over
   months_waning_antibody : [4, 8.5, 13] # Months waning antibodies
   num_sims : 25
   cores : 1
-  num_landscapes : 10
+  num_landscapes : 1
 

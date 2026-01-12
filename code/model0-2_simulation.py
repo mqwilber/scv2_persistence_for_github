@@ -17,13 +17,7 @@ importlib.reload(land_sim)
 
 
 """
-Script to simulate Model 1, 2 and 3  
-
-To use this script, at the command line type
-
-python3 model0-2_simulation.py model_parameters.yml 
-
-This will run the baseline simulation. See run_all_models.sh.
+Script to simulate Model 1, 2 and 3   
 """
 
 def run_simulation(ns, init, params, foi_map, t_array, time_length, deltat, external_infection, model_nm, model_summary):
@@ -35,7 +29,7 @@ def run_simulation(ns, init, params, foi_map, t_array, time_length, deltat, exte
 
     if model_nm == "model0":
 
-        # Model 1 in the main text
+        # Model one
         all_res = land_sim.seir_simulation_discrete_stoch_time_varying_model0(init, params['n'], 
                                           params['sigma'], 
                                           params['gamma'],
@@ -79,7 +73,7 @@ if __name__ == '__main__':
     ################################
 
     baseline_parameters = "model_parameters.yml"
-    parameter_set = sys.argv[1]
+    parameter_set = sys.argv[1] #"model_parameters.yml"
 
     # Load parameters
     with open(baseline_parameters, 'r') as file:
@@ -127,9 +121,8 @@ if __name__ == '__main__':
     # Otherwise, load them from disk
     build_adj_matrices = True
     run_epi_simulations = True
-    load_bvals = False # Load bvals from disk
     landscape_numbers = np.arange(1, model_params['sim']['num_landscapes'] + 1) 
-    seeds = np.array([55, 10, 45, 123, 34, 2, 234, 23, 89, 102, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69]) 
+    seeds = np.array([55, 10, 45, 123, 34, 2, 234, 23, 89, 102, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69])
     num_years = 3 # Total length of simulation
     year_length = model_params['demography']['year_length']
 
@@ -220,10 +213,11 @@ if __name__ == '__main__':
             ps = update_params.get("parameter_set_name_for_landscape", parameter_set_name)
             land, model_values = pd.read_pickle( "/Volumes/MarkWilbersEH/results/matrices_for_simulated_landscape{0}_{1}.pkl".format(landscape_number, ps))
 
+
         if run_epi_simulations:
 
             ### Epi simulations ###
-            os.makedirs("../results/stochastic_simulations", exist_ok=True)
+            # os.makedirs("../results/stochastic_simulations", exist_ok=True)
 
             # Set your simulation parameters
             params = {}
@@ -235,7 +229,7 @@ if __name__ == '__main__':
 
             time_length = year_length*num_years # days of the simulation
 
-            desired_R0_vals = np.array(model_params['sim']['desired_R0_vals']) # Average number of new infections produced per individual per day
+            desired_beta_vals = np.array(model_params['sim']['desired_beta_vals']) # Determines the probability of infection per time interval given together
             days_waning_antibody = np.array(model_params['sim']['months_waning_antibody'])*30 # Average number of days (months * 30 days) in recovered class
 
             # Start loop here for each model
@@ -244,56 +238,60 @@ if __name__ == '__main__':
                 model, model_timing, model_summary = model_values[model_name]
                 params['n'] = model.shape[-1]
 
-                # Get your desired beta values given R0 values
-                # Note that we are only calculating R0 for the first
-                # temporal window so the estimate is more comparable 
-                # across models.  Note that R0 > 1 during gestation nearly 
-                # gauruntees that R0 > 1 for the season. We have confirmed this
-                # by calculating seasonal variants of r.
-                if load_bvals:
-                    desired_beta_vals = np.empty(len(desired_R0_vals))
+                if model_name == "model0":
+                    msum = model_summary
+                    # Specify the FOI matrix
+                    model = model / model_params['landscape']['grid_size'] # Make model 0 comparable
+
                 else:
 
-                    print("Computing beta vals from R0 vals...")
-                    R0_unnorm, R0, _, _ = land_sim.movement_R0_from_avg_foi(model[0], params['gamma'])
-                    desired_beta_vals = desired_R0_vals / R0
-                    maxR0 = R0_unnorm.sum(axis=1).argmax()
-                    model_params['epi']['starting_index'] = maxR0
-                    print("Done")
-
+                    if model_name == "model1":
+                        msum = model_summary
+                    else:
+                        msum = model_summary[0]
 
                 # Start loop here for each beta_value corresponding to a desired r
                 for j, bval in enumerate(desired_beta_vals):
 
                     # Build foi matrix and memory map it for more efficient
                     # multiprocessing
+                    # Calculate the emergent R0 for a beta value
+                    
+                    if model_name != "model0": 
+                        R0val = land_sim.emergent_R0_for_all_individuals(params['gamma'], 
+                                                                         model[0, :, :]*bval, 
+                                                                         msum.group_id.values, 
+                                                                         num_sims=50)
+                    else:
+                        matchingR0 = model_params['sim']['matching_R0_vals'][j]
 
-                    if load_bvals:
-                        R0val = desired_R0_vals[j]
-                        _, modp = pd.read_pickle("/Volumes/MarkWilbersEH/results/stochastic_simulations/model_name={0}_R0={1}_days_in_recovery={2}_landscape{3}_{4}.pkl".format(model_name, desired_R0_vals[j], days_waning_antibody[0], landscape_number, parameter_set_name))
-                        bval = modp['epi']['beta']
-                        maxR0 = modp['epi'].get('starting_index', 20)
+                        # Update bval so model 0 is comparable with model 1 and model 2
+                        bval = (matchingR0*params['gamma']) / ((params['n'] - 1)) / model[0, 1, 0]
+                        R0val = (matchingR0, matchingR0, matchingR0)
 
+
+                    maxfoi = model[0, :, :].sum(axis=1).argmax()
+                    model_params['epi']['starting_index'] = maxfoi
                     model_params['epi']['beta'] = bval
-                    model_params['epi']['medianR0'] = np.median((R0_unnorm*bval).sum(axis=1))
+                    model_params['epi']['R0val'] = R0val
                     foi_map = build_memory_map(model*bval)
 
                     # Set the initial conditions
                     init = np.zeros((4, params['n']), dtype=np.int64)
                     init[0, :] = 1
-                    init[0, maxR0] = 0
-                    init[2, maxR0] = 1
+                    init[0, maxfoi] = 0
+                    init[2, maxfoi] = 1
 
-                    deltat = 1.0 # One day time step for the simulation...note that this won't exactly correspond to the beta values because the delta t is different
+                    deltat = 1.0
                     external_infection = np.repeat(external_infection_rate, params['n'])
-                    t_array = np.cumsum(model_timing / time_length) # CHECK THIS
+                    t_array = np.cumsum(model_timing / time_length) 
 
                     # Run simulation
                     for d in days_waning_antibody:
 
                         all_sims = []
                         params['nu'] = 1 / d
-                        land_sim.logger.info("Starting model {0} with r = {1} and days waning = {2}".format(model_name, desired_R0_vals[j], d))
+                        land_sim.logger.info("Starting model {0} with beta = {1} and days waning = {2}".format(model_name, bval, d))
 
                         # Multiprocess simulations
                         pool = mp.Pool(processes=cores)
@@ -304,6 +302,6 @@ if __name__ == '__main__':
                         pool.close()
 
                         # Save simulation results for a particular model
-                        pd.to_pickle((all_sims, model_params), "/Volumes/MarkWilbersEH/results/stochastic_simulations/model_name={0}_R0={1}_days_in_recovery={2}_landscape{3}_{4}.pkl".format(model_name, desired_R0_vals[j], d, landscape_number, parameter_set_name))
+                        pd.to_pickle((all_sims, model_params), "/Volumes/MarkWilbersEH/results/stochastic_simulations/model_name={0}_beta={1}_days_in_recovery={2}_landscape{3}_{4}.pkl".format(model_name, desired_beta_vals[j], d, landscape_number, parameter_set_name))
 
 

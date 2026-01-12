@@ -43,7 +43,8 @@ epi :
 
 sim :
 
-  desired_R0_vals : [2.5, 4.0, 7.0, 13.0, 30.0, 45.0, 60.0] #[0.25, 0.5, 1, 2.0, 5.0, 7.5, 10.0] # Parameters that model will loop over
+  desired_beta_vals : [10.0, 30.0, 60.0, 100.0, 200.0] # units are per day. Divide by (60*24) to get units per minutes
+  matching_R0_vals : [1.10, 2.36, 3.58, 4.69, 6.69] # R0 values that approximately match landscape. Used for Model 1
   months_waning_antibody : [4, 8.5, 13] # Months waning antibodies
   num_sims : 25
   cores : 8

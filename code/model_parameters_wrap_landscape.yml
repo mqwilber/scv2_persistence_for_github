@@ -2,10 +2,9 @@ parameter_set_name: "wrap_landscape"
 
 landscape :
 
-  wrap_landscape : True
-
-sim :
-
+  desired_beta_vals : [10.0, 20.0, 30.0, 60.0, 100.0]
+  matching_R0_vals : [1.10, 2.36, 3.58, 4.69, 6.69]
   num_landscapes : 10
+  wrap_landscape : True
 
 

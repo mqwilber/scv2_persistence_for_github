@@ -566,7 +566,7 @@ if __name__ == '__main__':
     shp = gpd.read_file("../data/spatial_data/{0}".format(model_params['landscape']['forest_shapefile']))
 
     # Initialize the landscape
-    build_adj_matrices = True
+    build_adj_matrices = False
     run_epi_simulations = True
     less_memory = False # Set to true if you need to run a simulation with less memory. Doesn't calculate spatial results.
     landscape_numbers = np.arange(1, model_params['sim']['num_landscapes'] + 1)
@@ -739,7 +739,7 @@ if __name__ == '__main__':
         if run_epi_simulations:
 
             ### Epi simulations ###
-            os.makedirs("../results/stochastic_simulations", exist_ok=True)
+            # os.makedirs("../results/stochastic_simulations", exist_ok=True)
 
             model3_positions = model_values['model3'][2]
 
@@ -758,7 +758,10 @@ if __name__ == '__main__':
 
             time_length = year_length*num_years # days of the simulation
 
-            desired_R0_vals = np.array(model_params['sim']['desired_R0_vals']) # Average number of new infections produced per individual per day
+            # Your desired instrinsic rate of increase per day that is the same
+            # across models.  We want to isolate how movement structure affects
+            # SCV2 persistence. 
+            desired_beta_vals = np.array(model_params['sim']['desired_beta_vals']) # Average number of new infections produced per individual per day
             days_waning_antibody = np.array(model_params['sim']['months_waning_antibody'])*30 # Average number of days (months * 30 days) in recovered class
 
             # Start loop here for each model
@@ -766,41 +769,40 @@ if __name__ == '__main__':
 
                 model, model_timing, model_summary = model_values[model_name]
                 params['n'] = model.shape[-1]
+                n_init = model_summary[0].query("alive == True and birth_time == 0").shape[0]
 
-                #  Individuals are born and die. I need
-                # to zero out unborn and dead individuals.  I will just do it
-                # at each season to keep it simpler.
-                new_model = update_dead_alive_for_model(model, model_summary)
 
-                # Get your desired beta values
-                print("Computing beta vals from R0 vals...")
-                R0_unnorm, R0, _, _ = land_sim.movement_R0_from_avg_foi(new_model[0], params['gamma'])
-                desired_beta_vals = desired_R0_vals / R0 # Using some nice properties of R0 to compute this.
-                maxR0 = R0_unnorm.sum(axis=1).argmax()
-                model_params['epi']['starting_index'] = maxR0
-                print("Done")
+                new_model = model[0, :n_init, :n_init] # These are the initial individuals
+                maxfoi = new_model.sum(axis=1).argmax()
 
                 # Clean up before the loops
                 model_map = build_memory_map(model)
                 del model
-                del new_model
 
                 # Start loop here for each beta_value corresponding to a desired r
                 for j, bval in enumerate(desired_beta_vals):
 
+
+                    R0val = land_sim.emergent_R0_for_all_individuals(params['gamma'], 
+                                                                     new_model*bval, 
+                                                                     model_summary[0].group_id.values, 
+                                                                     num_sims=50)
+
+                    model_params['epi']['starting_index'] = maxfoi
+                    model_params['epi']['beta'] = bval
+                    model_params['epi']['R0val'] = R0val
+
                     # Build foi matrix.  Yes, this should still be model and not new_model
                     # because the the simulation will account for death appropriately
-                    model_params['epi']['beta'] = bval
-                    model_params['epi']['medianR0'] = np.median((R0_unnorm*bval).sum(axis=1))
                     foi_map = model_map * bval
 
-                    # Set the initial conditions
+        
                     unborn = birth_times > 0
                     init = np.zeros((6, params['n']), dtype=np.int64)
                     init[0, :] = 1
                     # Single infected individual...MAKE SURE INDIVIDUAL IS BORN! 
-                    init[0, maxR0] = 0
-                    init[2, maxR0] = 1
+                    init[0, maxfoi] = 0
+                    init[2, maxfoi] = 1
                     # Set unborn
                     init[0, unborn] = 0
                     init[4, unborn] = 1
@@ -814,7 +816,7 @@ if __name__ == '__main__':
 
                         all_sims = []
                         params['nu'] = 1 / d
-                        land_sim.logger.info("Starting model {0} with R0 = {1} and days waning = {2}".format(model_name, desired_R0_vals[j], d))
+                        land_sim.logger.info("Starting model {0} with beta = {1} and days waning = {2}".format(model_name, desired_beta_vals[j], d))
 
                         if not less_memory:
 
@@ -835,7 +837,8 @@ if __name__ == '__main__':
                                                                              death_times, birth_times, model_summary) for i in range(num_sims)]
 
                         # Save simulation results for a particular model
-                        pd.to_pickle((all_sims, model_params), "/Volumes/MarkWilbersEH/results/stochastic_simulations/model_name={0}_R0={1}_days_in_recovery={2}_landscape{3}_{4}.pkl".format(model_name, desired_R0_vals[j], d, landscape_number, parameter_set_name))
+                        pd.to_pickle((all_sims, model_params), "/Volumes/MarkWilbersEH/results/stochastic_simulations/model_name={0}_beta={1}_days_in_recovery={2}_landscape{3}_{4}.pkl".format(model_name, desired_beta_vals[j], d, landscape_number, parameter_set_name))
+                        # pd.to_pickle((all_sims, model_params), "../results/stochastic_simulations/model_name={0}_R0={1}_days_in_recovery={2}_landscape{3}_{4}_test_now.pkl".format(model_name, desired_R0_vals[j], d, landscape_number, parameter_set_name))
 
 
 
