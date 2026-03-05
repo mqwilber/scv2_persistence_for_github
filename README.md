@@ -6,7 +6,7 @@ Here are the steps to reproduce the results
 2. Run the script `run_all_models.sh`
 3. Interactively generate plots using `plot_simulations.ipynb`
 
-Note that due additional ongoing research that used the movement data used in this manuscript, the full movement dataset is not shared. Thus, note all of the code provided can be run as it requires the movement data.
+Note that due additional ongoing research that used the movement data used in this manuscript, the full movement dataset is not shared. Thus, not all of the code provided can be run as it requires the movement data.
 
 The directory contains the following folders and files
 
