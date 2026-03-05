@@ -1,4 +1,4 @@
-The repository `scv2_persistence_for_github` contains the code to reproduce the analyses described in the manuscript **A white-tailed deer population is unlikely a reservoir for SARS-CoV-2, despite multiple exposures**
+The repository `scv2_persistence_for_github` contains the code to reproduce the analyses described in the manuscript **A white-tailed deer population in Tennessee is unlikely a reservoir for SARS-CoV-2, despite multiple exposures**
 
 Here are the steps to reproduce the results
 
